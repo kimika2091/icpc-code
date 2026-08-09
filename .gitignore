@@ -1,0 +1,17 @@
+# Compiled artifacts
+*.exe
+*.o
+*.obj
+*.out
+
+# Local editor and competitive-programming metadata
+.vscode/
+.cph/
+**/.cph/
+tempCodeRunnerFile.cpp
+
+# Downloaded problem statements and editor/OS noise
+*.pdf
+.DS_Store
+Thumbs.db
+
