@@ -1,105 +1,97 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-struct Node {
-    int mask = 0;
-    bool s10 = false;
-    bool s20 = false;
-    bool s21 = false;
-    bool s210 = false;
-};
-
-bool has(const Node& x, int value) {
-    return (x.mask >> value) & 1;
-}
-
-Node merge(const Node& L, const Node& R) {
-    Node res;
-    res.mask = L.mask | R.mask;
-    res.s10 = L.s10 || R.s10 || (has(L, 1) && has(R, 0));
-    res.s20 = L.s20 || R.s20 || (has(L, 2) && has(R, 0));
-    res.s21 = L.s21 || R.s21 || (has(L, 2) && has(R, 1));
-    res.s210 = L.s210 || R.s210 || (L.s21 && has(R, 0)) || (has(L, 2) && R.s10);
-    return res;
-}
-
-Node makeNode(int value) {
-    Node res;
-    res.mask = 1 << value;
-    return res;
-}
-
 struct SegmentTree {
-    int size;
-    vector<Node> tree;
-    SegmentTree(const vector<int>& a) {
-        int n = a.size();
-        size = 1;
-        while (size < n) size <<= 1;
-        tree.resize(size * 2);
-        for (int i = 0; i < n; ++i) {
-            tree[size + i] = makeNode(a[i]);
+    #define ls (rt << 1)
+    #define rs (rt << 1 | 1)
+    struct Node {
+        bool has_0 = 0, has_1 = 0, has_2 = 0;
+        bool has_21 = 0, has_20 = 0, has_10 = 0;
+        bool has_210 = 0;
+        bool order = 0;
+        friend Node operator + (const Node &l, const Node &r) {
+            return {
+                l.has_0 | r.has_0, l.has_1 | r.has_1, l.has_2 | r.has_2, 
+                l.has_21 | r.has_21 | (l.has_2 & r.has_1), l.has_20 | r.has_20 | (l.has_2 & r.has_0), l.has_10 | r.has_10 | (l.has_1 & r.has_0), 
+                l.has_210 | r.has_210 | (l.has_2 & r.has_10) | (l.has_21 & r.has_0), 
+                l.order & r.order & !(l.has_1 & r.has_0) & !(l.has_2 & r.has_0) & !(l.has_2 & r.has_1)
+            };
         }
-        for (int i = size - 1; i >= 1; --i) {
-            tree[i] = merge(tree[i << 1], tree[i << 1 | 1]);
-        }
+    };
+    vector <Node> tree;
+    SegmentTree (int n) : tree(n << 2 | 1) {}
+    void pushup (int rt) {
+        tree[rt] = tree[ls] + tree[rs];
     }
-    void update(int pos, int value) {
-        int p = size + pos;
-        tree[p] = makeNode(value);
-        for (p >>= 1; p >= 1; p >>= 1) {
-            tree[p] = merge(tree[p << 1], tree[p << 1 | 1]);
+    void build (const vector<int> &a, int rt, int l, int r) {
+        if (l == r) {
+            if (a[l] == 0) tree[rt].has_0 = 1;
+            else if (a[l] == 1) tree[rt].has_1 = 1;
+            else tree[rt].has_2 = 1;
+            tree[rt].order = 1;
+            return;
         }
+        int mid = (l + r) >> 1;
+        build(a, ls, l, mid);
+        build(a, rs, mid + 1, r);
+        pushup(rt);
     }
-    Node query(int l, int r) {
-        l += size;
-        r += size;
-        Node L, R;
-        while (l <= r) {
-            if (l & 1) L = merge(L, tree[l++]);
-            if (!(r & 1)) R = merge(tree[r--], R);
-            l >>= 1;
-            r >>= 1;
+    void update (int rt, int l, int r, int p, int x) {
+        if (l == r) {
+            tree[rt].has_0 = tree[rt].has_1 = tree[rt].has_2 = 0;
+            if (x == 0) tree[rt].has_0 = 1;
+            else if (x == 1) tree[rt].has_1 = 1;
+            else tree[rt].has_2 = 1;
+            return;
         }
-        return merge(L, R);
+        int mid = (l + r) >> 1;
+        if (p <= mid) update(ls, l, mid, p, x);
+        else update(rs, mid + 1, r, p, x);
+        pushup(rt);
     }
+    Node query (int rt, int l, int r, int ql, int qr) {
+        if (ql <= l && r <= qr) {
+            return tree[rt];
+        }
+        int mid = (l + r) >> 1;
+        if (qr <= mid) return query(ls, l, mid, ql, qr);
+        if (ql > mid) return query(rs, mid + 1, r, ql, qr);
+        return query(ls, l, mid, ql, qr) + query(rs, mid + 1, r, ql, qr);
+    }
+    #undef ls
+    #undef rs
 };
 
 void solve() {
     int n, q;
     cin >> n >> q;
-    vector<int> a(n);
-    for (int& x : a) cin >> x;
-    SegmentTree seg(a);
+    vector <int> a(n + 1);
+    for (int i = 1; i <= n; i++) {
+        cin >> a[i];
+    }
+    SegmentTree tr(n);
+    tr.build(a, 1, 1, n);
     while (q--) {
-        int type;
-        cin >> type;
-        if (type == 1) {
-            int p, x;
-            cin >> p >> x;
-            --p;
-            seg.update(p, x);
-        } 
+        int op, x, y;
+        cin >> op >> x >> y;
+        if (op == 1) {
+            tr.update(1, 1, n, x, y);
+        }
         else {
-            int l, r;
-            cin >> l >> r;
-            l--;
-            r--;
-            Node res = seg.query(l, r);
-            bool sorted = !res.s10 && !res.s20 && !res.s21;
-            if (sorted) cout << 0 << '\n';
-            else if (res.s210) cout << 2 << '\n';
-            else cout << 1 << '\n';         
+            auto res = tr.query(1, 1, n, x, y);
+            if (res.order) cout << 0 << '\n';
+            else if (res.has_210) cout << 2 << '\n';
+            else cout << 1 << '\n';
         }
     }
 }
 
-int main() {
-	cin.tie(nullptr)->sync_with_stdio(false);
-	int T = 1;
-	cin >> T;
-	while(T--) {
-	    solve();
-	}
-	return 0; 
+signed main() {
+    cin.tie(nullptr) -> sync_with_stdio(false);
+    int T = 1;
+    cin >> T;
+    while (T--) {
+        solve();
+    }
+    return 0;
 }

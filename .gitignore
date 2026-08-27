@@ -8,10 +8,10 @@
 .vscode/
 .cph/
 **/.cph/
+tmp/
 tempCodeRunnerFile.cpp
 
 # Downloaded problem statements and editor/OS noise
 *.pdf
 .DS_Store
 Thumbs.db
-
